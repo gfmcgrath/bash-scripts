@@ -1,56 +1,45 @@
 #!/bin/bash
 
-# Incremental Rotating Backup Using rsync
+# The source path to backup. Can be local or remote.
+backup_source="/mnt/data/share/media"
 
-# Sources
-# https://digitalis.io/blog/linux/incremental-backups-with-rsync-and-hard-links/
-# https://rsync.samba.org/examples.html
-# https://www.admin-magazine.com/Articles/Using-rsync-for-Backups/(offset)/2
-# ChatGPT
+# Where to store the incremental backups
+backup_target="/mnt/usb/rsync_backup/file-srv"
 
-set -e
+# Where to store this backup
+current_backup="$backup_target/$(date +%Y-%m-%d_%H:%M:%S)"
 
-# Backup source
-backup_source="/home/garym/backup_test/source"
+# Where to find the most recent backup
+last_backup=$(find "$backup_target" -mindepth 1 -maxdepth 1 -type d | sort | tail -n 1)
 
-# Backup destination
-backup_dest="/home/garym/backup_test/dest"
+# Define global options
+global_opts="--archive --verbose --human-readable --delete --info=progress2"
 
-# rsync options
-global_opts="--archive --verbose --human-readable --delete"
+# Define the number of backups to keep before starting to remove the oldest ones
+retention_points=10
 
-# Define the number of folders to keep before starting to remove the oldest ones
-num_folders_to_keep=3
+# Get the number of directories in the backup target
+num_folders=$(ls -1 "$backup_target" | wc -l)
 
-# Ensure backup_dest exists
-if [ ! -d $backup_dest ]; then
-    echo "Backup destination $backup_dest does not exist!"
-    exit 1
-fi
-
-# Get the number of folders
-num_folders=$(ls -1 $backup_dest | wc -l)
-
-# If there are more than the specified number of folders, remove the oldest ones
-if [ $num_folders -gt $num_folders_to_keep ]; then
-    num_folders_to_remove=$((num_folders - num_folders_to_keep))
+# If there are more than the specified number of directories, remove the oldest ones
+if [ "$num_folders" -gt "$retention_points" ]; then
+    num_folders_to_remove=$((num_folders - retention_points))
     for (( i=1; i<=num_folders_to_remove; i++ )); do
-        oldest_folder=$(ls -1 $backup_dest | sort | head -n 1)
-        if [ -n $oldest_folder ]; then
-            rm -rf $backup_dest/$oldest_folder
+        oldest_folder=$(ls -1 "$backup_target" | sort | head -n 1)
+        if [ -n "$oldest_folder" ]; then
+            echo "Removing $backup_target/$oldest_folder"
+            rm -rf "$backup_target/$oldest_folder"
         fi
     done
 fi
 
-# Get the newest folder
-#newest_folder=$(ls -1 $backup_dest | sort -r | head -n 1)
-newest_folder=$(ls -1 $backup_dest 2>/dev/null | sort -r | head -n 1)
-
-# Run rsync
-if [ -d "$newest_folder" ]; then
-    opts="$global_opts --link-dest $newest_folder"
+# Use the most recent backup as the incremental base if it exists
+if [ -d "$last_backup" ]
+then
+        OPTS="$global_opts --link-dest $last_backup"
 else
-    opts="$global_opts"
+        OPTS="$global_opts"
 fi
 
-rsync $opts $backup_source $backup_dest/$(date +%Y-%m-%d)_backup
+# Run the rsync
+rsync --delete $OPTS "$backup_source" "$current_backup"
