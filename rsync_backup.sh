@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Define our options
-backup_source="/mnt/data/share/media/"
-backup_target="/mnt/usb/rsync_backup/"
+backup_source="/path/to/source"
+backup_target="/path/to/target"
 global_opts="--archive --verbose --human-readable --delete --info=progress2,stats2"
 retention_points=3
 
