@@ -31,12 +31,12 @@ last_backup=$(find "$backup_target" -mindepth 1 -maxdepth 1 -type d | sort | tai
 if [ -d "$last_backup" ]; then
         rename=$(find "$backup_target" -mindepth 1 -maxdepth 1 -type d | sort | tail -n 2 | head -n 1)
         mv "$rename" "${rename//_full/}"
-        OPTS=""$global_opts" --link-dest "$last_backup""
+        opts=""$global_opts" --link-dest "$last_backup""
         echo "Performing incremental backup..."
 else
-        OPTS=""$global_opts" "--whole-file""
+        opts=""$global_opts" "--whole-file""
         echo "Performing initial backup job, sending whole-files..."
 fi
 
 # Run the rsync
-rsync $OPTS "$backup_source" "$current_backup"
+rsync $opts "$backup_source" "$current_backup"
